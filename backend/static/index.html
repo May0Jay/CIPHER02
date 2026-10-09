@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Myphema – Data Exfiltration Detection</title>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--panel2:#f1f3f6;--line:#e5e8ee;--tx:#0f172a;--mut:#6b7385;--ac:#f97316;--acs:#ffe9da;--ok:#16a34a;--oks:#dcf5e5;--bad:#e11d48;--bads:#fde2e8;--warn:#d97706;--warns:#fdf0d5;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#07090d;--panel:#0d1118;--panel2:#141a23;--line:#222a36;--tx:#f1f4f9;--mut:#8b94a7;--acs:#3a1d0d;--oks:#0d2a1a;--bads:#3a111d;--warns:#33250a;--ok:#34d27b;--bad:#ff5273;--warn:#f5b13d}}
+:root[data-theme="dark"]{--bg:#07090d;--panel:#0d1118;--panel2:#141a23;--line:#222a36;--tx:#f1f4f9;--mut:#8b94a7;--acs:#3a1d0d;--oks:#0d2a1a;--bads:#3a111d;--warns:#33250a;--ok:#34d27b;--bad:#ff5273;--warn:#f5b13d}
+*{box-sizing:border-box;margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--tx);font:14px/1.45 "Inter",system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+.hide{display:none!important}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:.04em}
+.logo i{width:26px;height:26px;border-radius:50%;border:4px solid var(--ac);border-right-color:transparent}
+.btn{border:0;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer;background:var(--ac);color:#fff;font-size:13px}
+.btn.g{background:var(--panel2);color:var(--tx);border:1px solid var(--line)}.btn.d{background:var(--bad)}.btn:disabled{opacity:.5;cursor:default}
+.lnk{background:none;border:0;color:var(--ac);cursor:pointer;font:inherit;font-weight:600}
+.ib{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--tx);cursor:pointer}
+.sub{color:var(--mut);margin-top:2px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none;display:inline-block}.dot.r{background:var(--bad)}.dot.w{background:var(--warn)}.dot.m{background:var(--mut)}
+.chip{display:inline-flex;font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--oks);color:var(--ok);text-transform:capitalize;white-space:nowrap}
+.chip.r{background:var(--bads);color:var(--bad)}.chip.w{background:var(--warns);color:var(--warn)}.chip.m{background:var(--panel2);color:var(--mut)}
+/* login */
+#login{min-height:100vh;display:grid;place-items:center;padding:20px}
+.box{width:100%;max-width:420px}.box .logo{justify-content:center;font-size:20px;margin-bottom:18px}
+.lc{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--panel2);border-radius:10px;padding:4px;margin-bottom:20px}
+.tabs button{border:0;background:none;padding:9px;border-radius:7px;font-weight:600;color:var(--mut);cursor:pointer;font-size:14px}
+.tabs button.on{background:var(--panel);color:var(--ac);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.lc h1{font-size:21px}.lc .sub{margin:3px 0 18px}
+.f{margin-bottom:14px}.f label{display:block;font-size:11px;letter-spacing:.06em;color:var(--mut);text-transform:uppercase;font-weight:500;margin-bottom:6px}
+.in{position:relative}
+.lc input{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--tx);font:inherit}
+.lc input:focus{outline:2px solid var(--ac);outline-offset:1px}.lc input.err{border-color:var(--bad)}
+.eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--mut);cursor:pointer;padding:6px 8px;font-size:12px;font-weight:600}
+.msg{color:var(--bad);font-size:12px;margin-top:5px}
+.lc .btn{width:100%;padding:12px;font-size:14px;margin-top:6px}
+.otp{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:6px 0 4px}
+.lc .otp input{text-align:center;font-size:22px;font-weight:700;padding:12px 0}
+.center{text-align:center;margin-top:14px;color:var(--mut);font-size:13px}
+/* app */
+.app{display:grid;grid-template-columns:210px 1fr;min-height:100vh}
+aside{border-right:1px solid var(--line);background:var(--panel);padding:18px 14px;display:flex;flex-direction:column;gap:4px}
+aside .logo{padding:2px 8px 18px}
+.nav{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;color:var(--mut);cursor:pointer;font-weight:500;border:0;background:none;font-size:14px;text-align:left;width:100%}
+.nav:hover{background:var(--panel2)}.nav.on{background:var(--acs);color:var(--ac)}.nav.out{margin-top:auto;color:var(--bad)}
+.nav svg{width:17px;height:17px;flex:none}
+.bdg{margin-left:auto;background:var(--bad);color:#fff;border-radius:99px;font-size:11px;font-weight:700;padding:1px 7px}
+main{display:flex;flex-direction:column;min-width:0}
+header{display:flex;align-items:center;gap:14px;padding:12px 26px;border-bottom:1px solid var(--line);background:var(--panel)}
+.sp{flex:1}.tag{display:flex;align-items:center;gap:7px;color:var(--mut);font-size:13px}
+.av{width:30px;height:30px;border-radius:50%;background:#64748b;color:#fff;display:grid;place-items:center;font-weight:600;flex:none}
+.wrap{padding:26px;display:flex;flex-direction:column;gap:16px}
+h1{font-size:22px}h2{font-size:20px;margin:12px 0 4px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.lbl{font-size:11px;letter-spacing:.06em;color:var(--mut);text-transform:uppercase;font-weight:500}
+.big{font-size:28px;font-weight:700;margin:6px 0 2px}
+.ch{display:flex;justify-content:space-between;align-items:center}
+.tool{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fi{padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--tx);font:inherit}
+.cols{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;align-items:start}.cols.one{grid-template-columns:1fr}
+.row{display:flex;align-items:center;gap:12px;padding:11px 8px;border-top:1px solid var(--line);cursor:pointer;border-radius:8px}
+.row:first-child{border-top:0}.row:hover{background:var(--panel2)}.row.sel{background:var(--acs)}
+.row .t{flex:1;min-width:0}.row .t b{display:block}.row small{color:var(--mut)}
+.meta{color:var(--mut);font-size:13px;display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 14px}.meta b{color:var(--tx)}
+.flow{display:flex;align-items:center;gap:8px;margin:6px 0 16px;flex-wrap:wrap;color:var(--mut)}
+.node{padding:8px 11px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);font-size:12px;font-weight:500;color:var(--tx)}
+.node.hot{border-color:var(--bad);color:var(--bad);background:var(--bads)}
+.risk{height:7px;border-radius:9px;background:var(--panel2);overflow:hidden;margin:6px 0 16px}
+.risk i{display:block;height:100%;background:linear-gradient(90deg,var(--warn),var(--bad))}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+.kv div{background:var(--panel2);border-radius:9px;padding:10px 12px}.kv b{display:block;font-size:15px;margin-top:2px;word-break:break-word}
+.pf{display:flex;align-items:center;gap:14px}.pf .av{width:52px;height:52px;font-size:20px}
+.hist{margin-top:8px;font-size:13px;color:var(--mut)}.hist div{padding:6px 0;border-top:1px solid var(--line)}.hist b{color:var(--tx)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.tbl td,.tbl th{padding:9px 6px;border-top:1px solid var(--line);text-align:left}
+.tbl th{border:0;color:var(--mut);font-weight:500;font-size:11px;text-transform:uppercase}
+#toast{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:9px;opacity:0;pointer-events:none;transition:opacity .2s;font-weight:500;text-align:center;max-width:90vw;z-index:9}
+#toast.s{opacity:1}
+@media(max-width:900px){.app{grid-template-columns:1fr}aside{flex-direction:row;overflow-x:auto;padding:8px;border-right:0;border-bottom:1px solid var(--line)}aside .logo{display:none}.nav{width:auto;white-space:nowrap}.nav.out{margin:0}.stats{grid-template-columns:1fr 1fr}.cols{grid-template-columns:1fr}header{padding:10px 14px}.wrap{padding:16px}.hd{display:none}}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+</style>
+</head>
+<body>
+<section id="login"><div class="box">
+ <div class="logo"><i></i>MYPHEMA</div>
+ <div class="lc">
+  <div id="auth">
+   <div class="tabs"><button id="tIn" class="on">Sign in</button><button id="tUp">Sign up</button></div>
+   <form id="fIn" novalidate>
+    <h1>Welcome back</h1><p class="sub">Sign in to your monitoring workspace</p>
+    <div class="f"><label for="iEm">Work email</label><input id="iEm" type="email" autocomplete="email" placeholder="you@company.com"><div class="msg"></div></div>
+    <div class="f"><label for="iPw">Password</label><div class="in"><input id="iPw" type="password" autocomplete="current-password" placeholder="Your password"><button type="button" class="eye" data-eye="iPw">Show</button></div><div class="msg"></div></div>
+    <button class="btn" type="submit">Sign in</button>
+    <p class="center">New to Myphema? <button type="button" class="lnk" id="goUp">Create an account</button></p>
+   </form>
+   <form id="fUp" class="hide" novalidate>
+    <h1>Create your account</h1><p class="sub">We'll email you a code to verify it</p>
+    <div class="f"><label for="uNm">Full name</label><input id="uNm" autocomplete="name" placeholder="Jane Doe"><div class="msg"></div></div>
+    <div class="f"><label for="uEm">Work email</label><input id="uEm" type="email" autocomplete="email" placeholder="you@company.com"><div class="msg"></div></div>
+    <div class="f"><label for="uPw">Password</label><div class="in"><input id="uPw" type="password" autocomplete="new-password" placeholder="Min 8 characters, letters and numbers"><button type="button" class="eye" data-eye="uPw">Show</button></div><div class="msg"></div></div>
+    <div class="f"><label for="uCp">Confirm password</label><div class="in"><input id="uCp" type="password" autocomplete="new-password" placeholder="Re-enter password"><button type="button" class="eye" data-eye="uCp">Show</button></div><div class="msg"></div></div>
+    <button class="btn" type="submit">Create account &amp; send code</button>
+    <p class="center">Already have an account? <button type="button" class="lnk" id="goIn">Sign in</button></p>
+   </form>
+  </div>
+  <form id="fOtp" class="hide" novalidate>
+   <h1>Verify your email</h1><p class="sub">Enter the 6-digit code sent to <b id="shown"></b></p>
+   <div class="otp" id="otp"></div><div class="msg" id="otpMsg"></div>
+   <button class="btn" type="submit">Verify &amp; continue</button>
+   <p class="center"><span id="timer"></span><button type="button" class="lnk hide" id="resend">Resend code</button></p>
+   <p class="center"><button type="button" class="lnk" id="back">← Back</button></p>
+  </form>
+  <div class="f hide" id="srvBox" style="margin:18px 0 0"><label for="srv">Server URL</label><input id="srv" placeholder="http://localhost:5000" autocomplete="off"></div>
+ </div>
+</div></section>
+
+<div class="app hide" id="app">
+ <aside id="side"></aside>
+ <main>
+  <header><b id="ttl"></b><span class="sp"></span><span class="tag"><span class="dot"></span>Monitoring on</span>
+   <button class="ib" id="theme" aria-label="Toggle theme">☀</button><span class="av" id="av"></span><span id="un" class="hd"></span></header>
+  <div class="wrap" id="page"></div>
+ </main>
+</div>
+<div id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
